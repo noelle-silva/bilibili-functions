@@ -1,5 +1,7 @@
 import type { ButtonModule } from '@/core/types';
 import { isModuleEnabled } from '@/utils/storage';
+import { getCompleteVideoInfo } from '@/utils/api';
+import { debugLog, errorLog } from '@/utils/debug';
 
 /**
  * 按钮管理器
@@ -14,7 +16,7 @@ export class ButtonManager {
    */
   register(module: ButtonModule): void {
     if (this.modules.has(module.id)) {
-      console.warn(`模块 ${module.id} 已存在，将被覆盖`);
+      debugLog(`模块 ${module.id} 已存在，将被覆盖`);
     }
 
     this.modules.set(module.id, module);
@@ -130,8 +132,8 @@ export class ButtonManager {
         button.style.opacity = '0.6';
         button.style.cursor = 'not-allowed';
 
-        // 获取视频信息
-        const videoInfo = this.getVideoInfo();
+        // 获取视频信息（异步从页面上下文获取）
+        const videoInfo = await this.getVideoInfo();
 
         // 执行模块功能
         await module.execute({
@@ -140,7 +142,7 @@ export class ButtonManager {
           page: document,
         });
       } catch (error) {
-        console.error(`模块 ${module.id} 执行失败:`, error);
+        errorLog(`模块 ${module.id} 执行失败:`, error);
         // 错误会在模块内部处理和显示
       } finally {
         button.disabled = false;
@@ -154,25 +156,19 @@ export class ButtonManager {
 
   /**
    * 获取当前视频信息
+   * 唯一方案：通过 API 获取完整信息（从 URL 提取 bvid，然后调用 API 获取 cid）
    */
-  private getVideoInfo() {
-    // 这个方法会在后面完善，从页面提取视频信息
-    const url = window.location.href;
-    const bvidMatch = url.match(/\/video\/(BV[\w]+)/);
-    const aidMatch = url.match(/\/video\/av(\d+)/);
-    const pageMatch = url.match(/[?&]p=(\d+)/);
+  private async getVideoInfo() {
+    debugLog('🔍 通过 API 获取视频信息...');
 
-    // 从页面获取标题
-    const titleElement = document.querySelector('h1.video-title');
-    const title = titleElement?.textContent?.trim() || '未知标题';
-
-    return {
-      bvid: bvidMatch?.[1] || '',
-      aid: aidMatch?.[1] || '',
-      cid: '', // 需要通过API获取
-      title,
-      part: pageMatch ? parseInt(pageMatch[1]) : 1,
-    };
+    try {
+      const videoInfo = await getCompleteVideoInfo();
+      debugLog('✅ 成功获取视频信息:', videoInfo);
+      return videoInfo;
+    } catch (error) {
+      errorLog('❌ 获取视频信息失败:', error);
+      throw new Error('无法获取视频信息，请刷新页面后重试');
+    }
   }
 
   /**
