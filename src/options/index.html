@@ -189,6 +189,193 @@
         background: #e8f5e9;
         color: #2e7d32;
       }
+
+      /* 统计面板 */
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+
+      .stat-card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+
+      .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .stat-icon {
+        font-size: 32px;
+        line-height: 1;
+      }
+
+      .stat-content {
+        flex: 1;
+      }
+
+      .stat-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: #18191c;
+        margin-bottom: 4px;
+      }
+
+      .stat-label {
+        font-size: 13px;
+        color: #61666d;
+      }
+
+      /* 操作按钮 */
+      .action-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 18px;
+        background: white;
+        border: 1px solid #e5e9ef;
+        border-radius: 6px;
+        color: #18191c;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: inherit;
+      }
+
+      .action-btn:hover {
+        background: #f6f7f9;
+        border-color: #00aeec;
+        color: #00aeec;
+        transform: translateY(-1px);
+      }
+
+      .action-btn:active {
+        transform: translateY(0);
+      }
+
+      .action-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .btn-icon {
+        font-size: 16px;
+        line-height: 1;
+      }
+
+      /* 响应式设计 */
+      @media (max-width: 768px) {
+        .stats-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .action-buttons {
+          flex-direction: column;
+        }
+
+        .action-btn {
+          width: 100%;
+          justify-content: center;
+        }
+      }
+
+      /* 模态对话框样式 */
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .modal.show {
+        display: flex;
+      }
+
+      .modal-content {
+        background: white;
+        border-radius: 8px;
+        padding: 24px;
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      }
+
+      .modal-header {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 16px;
+      }
+
+      .modal-body {
+        color: #61666d;
+        line-height: 1.6;
+        margin-bottom: 20px;
+      }
+
+      .modal-footer {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+      }
+
+      .modal-btn {
+        padding: 8px 16px;
+        border: 1px solid #e5e9ef;
+        border-radius: 4px;
+        background: white;
+        color: #18191c;
+        cursor: pointer;
+        font-size: 14px;
+        font-family: inherit;
+        transition: all 0.2s;
+      }
+
+      .modal-btn:hover {
+        background: #f6f7f9;
+      }
+
+      .modal-btn.primary {
+        background: #00aeec;
+        color: white;
+        border-color: #00aeec;
+      }
+
+      .modal-btn.primary:hover {
+        background: #0098d4;
+      }
+
+      .modal-btn.danger {
+        background: #f44336;
+        color: white;
+        border-color: #f44336;
+      }
+
+      .modal-btn.danger:hover {
+        background: #d32f2f;
+      }
     </style>
   </head>
   <body>
@@ -198,6 +385,63 @@
         <p>管理你的自定义功能模块</p>
       </div>
 
+      <!-- 统计面板 -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">📊</div>
+          <div class="stat-content">
+            <div class="stat-value" id="totalModules">0</div>
+            <div class="stat-label">总模块数</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">✅</div>
+          <div class="stat-content">
+            <div class="stat-value" id="enabledModules">0</div>
+            <div class="stat-label">已启用</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">❌</div>
+          <div class="stat-content">
+            <div class="stat-value" id="disabledModules">0</div>
+            <div class="stat-label">已禁用</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 快速操作 -->
+      <div class="card">
+        <div class="card-header">
+          <h2>快速操作</h2>
+        </div>
+        <div class="card-body">
+          <div class="action-buttons">
+            <button class="action-btn" id="enableAllBtn">
+              <span class="btn-icon">✅</span>
+              <span>全部启用</span>
+            </button>
+            <button class="action-btn" id="disableAllBtn">
+              <span class="btn-icon">⏸️</span>
+              <span>全部禁用</span>
+            </button>
+            <button class="action-btn" id="resetBtn">
+              <span class="btn-icon">🔄</span>
+              <span>重置设置</span>
+            </button>
+            <button class="action-btn" id="exportBtn">
+              <span class="btn-icon">📤</span>
+              <span>导出配置</span>
+            </button>
+            <button class="action-btn" id="importBtn">
+              <span class="btn-icon">📥</span>
+              <span>导入配置</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 功能模块 -->
       <div class="card">
         <div class="card-header">
           <h2>功能模块</h2>
@@ -207,6 +451,7 @@
         </div>
       </div>
 
+      <!-- 使用说明 -->
       <div class="card">
         <div class="card-header">
           <h2>使用说明</h2>
@@ -217,7 +462,22 @@
             <li>点击"复制字幕"可以快速复制当前视频的字幕</li>
             <li>点击"批量下载"可以选择多个分P并下载字幕文件</li>
             <li>你可以在这里开启或关闭特定的功能模块</li>
+            <li>使用"导出配置"和"导入配置"可以备份和恢复你的设置</li>
           </ul>
+        </div>
+      </div>
+
+      <!-- 关于 -->
+      <div class="card">
+        <div class="card-header">
+          <h2>关于</h2>
+        </div>
+        <div class="card-body">
+          <div style="color: #61666d; line-height: 1.8;">
+            <p><strong>版本:</strong> <span id="version">1.0.0</span></p>
+            <p><strong>作者:</strong> Bilibili Buttons Team</p>
+            <p><strong>描述:</strong> 为 Bilibili 视频页面添加便捷的字幕管理功能</p>
+          </div>
         </div>
       </div>
 
@@ -228,6 +488,9 @@
         </p>
       </div>
     </div>
+
+    <!-- 隐藏的文件上传输入框 -->
+    <input type="file" id="importFile" accept=".json" style="display: none;" />
 
     <script type="module" src="./index.ts"></script>
   </body>
