@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bilibili 自定义按钮 - 设置</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          'Helvetica Neue', Arial, sans-serif;
+        background: #f5f7fa;
+        color: #18191c;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      .header {
+        background: white;
+        padding: 24px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        margin-bottom: 20px;
+      }
+
+      .header h1 {
+        font-size: 24px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #18191c;
+      }
+
+      .header p {
+        font-size: 14px;
+        color: #61666d;
+      }
+
+      .card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        margin-bottom: 16px;
+        overflow: hidden;
+      }
+
+      .card-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid #e5e9ef;
+      }
+
+      .card-header h2 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #18191c;
+      }
+
+      .card-body {
+        padding: 20px;
+      }
+
+      .module-item {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        padding: 16px;
+        border-radius: 8px;
+        transition: background 0.2s;
+      }
+
+      .module-item:hover {
+        background: #f6f7f9;
+      }
+
+      .module-item + .module-item {
+        margin-top: 8px;
+      }
+
+      .module-info {
+        flex: 1;
+      }
+
+      .module-name {
+        font-size: 15px;
+        font-weight: 500;
+        color: #18191c;
+        margin-bottom: 4px;
+      }
+
+      .module-description {
+        font-size: 13px;
+        color: #61666d;
+      }
+
+      .module-icon {
+        font-size: 20px;
+        margin-right: 12px;
+      }
+
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+        flex-shrink: 0;
+      }
+
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.3s;
+        border-radius: 24px;
+      }
+
+      .slider:before {
+        position: absolute;
+        content: '';
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+      }
+
+      input:checked + .slider {
+        background-color: #00aeec;
+      }
+
+      input:checked + .slider:before {
+        transform: translateX(20px);
+      }
+
+      .footer {
+        text-align: center;
+        padding: 20px;
+        color: #9499a0;
+        font-size: 13px;
+      }
+
+      .footer a {
+        color: #00aeec;
+        text-decoration: none;
+      }
+
+      .footer a:hover {
+        text-decoration: underline;
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: #9499a0;
+      }
+
+      .status-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        background: #e8f5ff;
+        border-radius: 4px;
+        margin-top: 16px;
+        font-size: 14px;
+        color: #0277bd;
+      }
+
+      .status-bar.success {
+        background: #e8f5e9;
+        color: #2e7d32;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>⚙️ Bilibili 自定义按钮</h1>
+        <p>管理你的自定义功能模块</p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>功能模块</h2>
+        </div>
+        <div class="card-body">
+          <div id="moduleList"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>使用说明</h2>
+        </div>
+        <div class="card-body">
+          <ul style="padding-left: 20px; line-height: 1.8; color: #61666d;">
+            <li>在 Bilibili 视频页面会自动显示自定义按钮</li>
+            <li>点击"复制字幕"可以快速复制当前视频的字幕</li>
+            <li>点击"批量下载"可以选择多个分P并下载字幕文件</li>
+            <li>你可以在这里开启或关闭特定的功能模块</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer">
+        <p>
+          Made with ❤️ for Bilibili |
+          <a href="https://github.com" target="_blank">GitHub</a>
+        </p>
+      </div>
+    </div>
+
+    <script type="module" src="./index.ts"></script>
+  </body>
+</html>

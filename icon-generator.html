@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bilibili Buttons 图标生成器</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 800px;
+      width: 100%;
+    }
+
+    h1 {
+      font-size: 28px;
+      color: #18191c;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #61666d;
+      margin-bottom: 40px;
+    }
+
+    .preview-section {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+    }
+
+    .preview-item {
+      text-align: center;
+    }
+
+    .preview-canvas {
+      border: 2px solid #e5e9ef;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      background: #f6f7f9;
+    }
+
+    .preview-label {
+      font-size: 14px;
+      color: #61666d;
+      font-weight: 500;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+
+    .btn-secondary {
+      background: #f6f7f9;
+      color: #18191c;
+      border: 2px solid #e5e9ef;
+    }
+
+    .btn-secondary:hover {
+      background: #e5e9ef;
+    }
+
+    .info {
+      background: #e8f5ff;
+      border-left: 4px solid #0277bd;
+      padding: 16px;
+      border-radius: 4px;
+      margin-top: 30px;
+      color: #0277bd;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .success {
+      background: #e8f5e9;
+      border-left: 4px solid #2e7d32;
+      padding: 16px;
+      border-radius: 4px;
+      margin-top: 20px;
+      color: #2e7d32;
+      font-size: 14px;
+      display: none;
+    }
+
+    .success.show {
+      display: block;
+      animation: fadeIn 0.3s;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 Bilibili Buttons 图标生成器</h1>
+    <p class="subtitle">为你的扩展生成漂亮的图标</p>
+
+    <div class="preview-section">
+      <div class="preview-item">
+        <canvas id="canvas16" class="preview-canvas" width="16" height="16"></canvas>
+        <div class="preview-label">16 × 16</div>
+      </div>
+      <div class="preview-item">
+        <canvas id="canvas48" class="preview-canvas" width="48" height="48"></canvas>
+        <div class="preview-label">48 × 48</div>
+      </div>
+      <div class="preview-item">
+        <canvas id="canvas128" class="preview-canvas" width="128" height="128"></canvas>
+        <div class="preview-label">128 × 128</div>
+      </div>
+    </div>
+
+    <div class="buttons">
+      <button class="btn-primary" onclick="downloadAll()">
+        📥 下载所有图标
+      </button>
+      <button class="btn-secondary" onclick="downloadIcon(16)">下载 16x16</button>
+      <button class="btn-secondary" onclick="downloadIcon(48)">下载 48x48</button>
+      <button class="btn-secondary" onclick="downloadIcon(128)">下载 128x128</button>
+    </div>
+
+    <div class="success" id="successMsg">
+      ✅ 图标已生成！请将下载的图标文件放到 <code>public/icons/</code> 目录下。
+    </div>
+
+    <div class="info">
+      <strong>📝 使用说明：</strong><br>
+      1. 点击"下载所有图标"按钮，会自动下载三个尺寸的图标<br>
+      2. 将下载的图标文件重命名为：icon-16.png、icon-48.png、icon-128.png<br>
+      3. 放到项目的 <code>public/icons/</code> 目录下<br>
+      4. 重新构建扩展即可使用新图标
+    </div>
+  </div>
+
+  <script>
+    // 绘制图标
+    function drawIcon(canvas, size) {
+      const ctx = canvas.getContext('2d');
+      const scale = size / 128; // 基于 128x128 设计，按比例缩放
+
+      // 清空画布
+      ctx.clearRect(0, 0, size, size);
+
+      // 背景渐变
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#00A1D6');  // Bilibili 蓝
+      gradient.addColorStop(1, '#0277bd');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+
+      // 绘制播放按钮图标
+      ctx.save();
+      ctx.translate(size / 2, size / 2);
+
+      // 白色圆形背景
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 播放三角形
+      ctx.fillStyle = 'white';
+      ctx.beginPath();
+      const triangleSize = size * 0.25;
+      ctx.moveTo(-triangleSize * 0.3, -triangleSize * 0.5);
+      ctx.lineTo(-triangleSize * 0.3, triangleSize * 0.5);
+      ctx.lineTo(triangleSize * 0.5, 0);
+      ctx.closePath();
+      ctx.fill();
+
+      // 字幕线条（下方）
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = size * 0.04;
+      ctx.lineCap = 'round';
+
+      const lineY = size * 0.25;
+      const lineWidth = size * 0.15;
+
+      // 第一条线
+      ctx.beginPath();
+      ctx.moveTo(-lineWidth, lineY);
+      ctx.lineTo(lineWidth * 0.3, lineY);
+      ctx.stroke();
+
+      // 第二条线
+      ctx.beginPath();
+      ctx.moveTo(-lineWidth * 0.5, lineY + size * 0.08);
+      ctx.lineTo(lineWidth, lineY + size * 0.08);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // 初始化所有画布
+    function initCanvases() {
+      [16, 48, 128].forEach(size => {
+        const canvas = document.getElementById(`canvas${size}`);
+        drawIcon(canvas, size);
+      });
+    }
+
+    // 下载单个图标
+    function downloadIcon(size) {
+      const canvas = document.getElementById(`canvas${size}`);
+      const link = document.createElement('a');
+      link.download = `icon-${size}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+
+      showSuccess();
+    }
+
+    // 下载所有图标
+    function downloadAll() {
+      [16, 48, 128].forEach((size, index) => {
+        setTimeout(() => {
+          downloadIcon(size);
+        }, index * 200); // 延迟下载，避免浏览器拦截
+      });
+    }
+
+    // 显示成功消息
+    function showSuccess() {
+      const msg = document.getElementById('successMsg');
+      msg.classList.add('show');
+      setTimeout(() => {
+        msg.classList.remove('show');
+      }, 5000);
+    }
+
+    // 页面加载时初始化
+    window.addEventListener('DOMContentLoaded', initCanvases);
+  </script>
+</body>
+</html>
