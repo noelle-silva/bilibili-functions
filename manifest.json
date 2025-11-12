@@ -10,7 +10,8 @@
   },
   "permissions": [
     "storage",
-    "downloads"
+    "downloads",
+    "activeTab"
   ],
   "host_permissions": [
     "https://www.bilibili.com/*",
@@ -30,6 +31,7 @@
   },
   "options_page": "src/options/index.html",
   "action": {
-    "default_title": "Bilibili 自定义按钮"
+    "default_title": "Bilibili 自定义按钮",
+    "default_popup": "src/popup/index.html"
   }
 }
