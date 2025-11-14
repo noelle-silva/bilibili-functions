@@ -44,6 +44,7 @@ export class DOMInjector {
    */
   createButtonContainer(): HTMLElement {
     const container = document.createElement('div');
+    container.id = 'bilibili-custom-buttons-container'; // 添加唯一ID
     container.className = 'bilibili-custom-buttons-container';
     container.style.cssText = `
       display: inline-flex;
@@ -57,6 +58,14 @@ export class DOMInjector {
    * 注入按钮容器
    */
   async inject(): Promise<HTMLElement | null> {
+    // 先检查是否已经存在（通过ID检查）
+    const existingContainer = document.getElementById('bilibili-custom-buttons-container');
+    if (existingContainer) {
+      console.log('✅ 按钮容器已存在，复用现有容器');
+      this.buttonContainer = existingContainer as HTMLElement;
+      return this.buttonContainer;
+    }
+
     // 如果已经注入，返回现有容器
     if (this.buttonContainer && document.contains(this.buttonContainer)) {
       return this.buttonContainer;
@@ -69,11 +78,24 @@ export class DOMInjector {
       return null;
     }
 
-    // 创建并注入按钮容器
+    // 创建按钮容器
     this.buttonContainer = this.createButtonContainer();
-    targetContainer.appendChild(this.buttonContainer);
 
-    console.log('✅ 按钮容器已注入');
+    // 🔧 关键修改：将容器作为兄弟元素插入，而不是子元素
+    // 这样不会破坏原生容器的内部结构
+    if (targetContainer.parentElement) {
+      // 在目标容器之后插入我们的容器
+      targetContainer.parentElement.insertBefore(
+        this.buttonContainer,
+        targetContainer.nextSibling
+      );
+      console.log('✅ 按钮容器已作为兄弟元素注入');
+    } else {
+      // 如果没有父元素，回退到原来的方案
+      targetContainer.appendChild(this.buttonContainer);
+      console.log('⚠️ 使用回退方案：appendChild');
+    }
+
     return this.buttonContainer;
   }
 

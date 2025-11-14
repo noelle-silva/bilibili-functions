@@ -3,7 +3,9 @@
     "allow": [
       "WebSearch",
       "WebFetch(domain:github.com)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(find:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []
