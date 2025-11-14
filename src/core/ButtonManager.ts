@@ -55,8 +55,9 @@ export class ButtonManager {
     this.container = targetElement;
     this.rendered = true;
 
-    // 清空容器
-    targetElement.innerHTML = '';
+    // 清空容器内的按钮
+    const buttons = targetElement.querySelectorAll('.bilibili-custom-button');
+    buttons.forEach((button) => button.remove());
 
     // 获取所有启用的模块
     const enabledModules: ButtonModule[] = [];
@@ -78,7 +79,7 @@ export class ButtonManager {
   }
 
   /**
-   * 创建按钮元素
+   * 创建按钮元素（B站原生风格）
    */
   private createButton(module: ButtonModule): HTMLElement {
     const button = document.createElement('button');
@@ -95,24 +96,24 @@ export class ButtonManager {
     }
     button.appendChild(content);
 
-    // 样式
+    // 🎨 B站原生按钮风格
     button.style.cssText = `
       display: inline-flex;
       align-items: center;
       justify-content: center;
       padding: 8px 16px;
-      margin-left: 8px;
       background: transparent;
       border: 1px solid #e5e9ef;
       border-radius: 4px;
       color: #18191c;
       font-size: 13px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.2s ease;
       font-weight: 500;
+      white-space: nowrap;
     `;
 
-    // 悬停效果
+    // 悬停效果（模仿B站原生）
     button.addEventListener('mouseenter', () => {
       button.style.background = '#f6f7f9';
       button.style.borderColor = '#00aeec';
