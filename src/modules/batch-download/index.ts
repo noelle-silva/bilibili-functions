@@ -59,8 +59,8 @@ export const batchDownloadModule: ButtonModule = {
           const subtitleText = await getVideoSubtitleText(page.cid, videoInfo.bvid, videoInfo.aid);
 
           const partTitle = sanitizeFilename(String(page.part || ''));
-          const trimmedPart = partTitle && partTitle !== baseTitle ? partTitle : '';
-          const filename = trimmedPart ? `P${page.page}_${trimmedPart}.txt` : `${baseTitle}_P${page.page}.txt`;
+          const suffix = partTitle || baseTitle || 'part';
+          const filename = `P${page.page}_${suffix}.txt`;
           const downloadId = await downloadTextThroughBackground(filename, subtitleText);
 
           await new Promise((resolve) => setTimeout(resolve, 250));
