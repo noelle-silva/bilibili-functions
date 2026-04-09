@@ -33,7 +33,9 @@
   ],
   "background": {
     "service_worker": "src/background/index.ts",
-    "type": "module"
+    "scripts": ["src/background/index.ts"],
+    "type": "module",
+    "preferred_environment": ["service_worker", "document"]
   },
   "options_page": "src/options/index.html",
   "action": {

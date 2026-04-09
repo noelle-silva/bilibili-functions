@@ -208,9 +208,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   // 打开系统下载页面
   if (request.type === 'OPEN_CHROME_DOWNLOADS') {
-    chrome.tabs.create({ url: 'chrome://downloads/' });
-    sendResponse({ success: true });
-    return;
+    try {
+      // Firefox: about:downloads
+      const isFirefox = typeof (chrome.runtime as any).getBrowserInfo === 'function';
+      chrome.tabs.create({ url: isFirefox ? 'about:downloads' : 'chrome://downloads/' });
+      sendResponse({ success: true });
+      return;
+    } catch (err: any) {
+      errorLog('打开下载页面失败:', err);
+      sendResponse({ success: false, error: err?.message || '打开下载页面失败' });
+      return;
+    }
   }
 });
 
