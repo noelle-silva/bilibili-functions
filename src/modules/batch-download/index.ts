@@ -2,6 +2,7 @@ import type { ButtonModule } from '@/core/types';
 import { getVideoPageList, getVideoSubtitleText, getVideoTitle } from '@/utils/api';
 import { showToast, downloadTextFile } from '@/utils/dom';
 import { createBatchDownloadDialog } from './dialog';
+import { openBatchProgressDialog } from '@/utils/batch-progress';
 
 /**
  * 批量下载字幕模块
@@ -39,47 +40,30 @@ export const batchDownloadModule: ButtonModule = {
       }
 
       // 批量下载
-      showToast(`开始下载 ${selectedPages.length} 个字幕...`, 'info');
+      showToast(`开始处理 ${selectedPages.length} 个字幕任务...`, 'info');
 
       const videoTitle = videoInfo.title || getVideoTitle();
-      let successCount = 0;
-      let failCount = 0;
+      const sanitizedTitle = videoTitle.replace(/[\\/:*?"<>|]/g, '_');
 
-      for (const page of selectedPages) {
-        try {
-          const subtitleText = await getVideoSubtitleText(
-            page.cid,
-            videoInfo.bvid,
-            videoInfo.aid
-          );
+      openBatchProgressDialog({
+        title: '批量下载字幕 - 任务进度',
+        items: selectedPages.map((page) => ({
+          id: String(page.cid),
+          label: `P${page.page}｜${page.part}`,
+          meta: page,
+        })),
+        async runItem(item) {
+          const page = item.meta as any;
+          const subtitleText = await getVideoSubtitleText(page.cid, videoInfo.bvid, videoInfo.aid);
 
-          // 生成文件名
-          const sanitizedTitle = videoTitle.replace(/[\\/:*?"<>|]/g, '_');
-          const sanitizedPart = page.part.replace(/[\\/:*?"<>|]/g, '_');
-          const filename = `${sanitizedTitle}_P${page.page}_${sanitizedPart}.txt`;
-
-          // 下载文件
+          const sanitizedPart = String(page.part || '').replace(/[\\/:*?"<>|]/g, '_');
+          const filename = `${sanitizedTitle}_P${page.page}_${sanitizedPart || 'part'}.txt`;
           downloadTextFile(filename, subtitleText);
 
-          successCount++;
-
-          // 添加延迟，避免下载过快
-          await new Promise(resolve => setTimeout(resolve, 300));
-        } catch (error) {
-          console.error(`下载 P${page.page} 字幕失败:`, error);
-          failCount++;
-        }
-      }
-
-      // 显示结果
-      if (failCount === 0) {
-        showToast(`✅ 成功下载 ${successCount} 个字幕文件`, 'success');
-      } else {
-        showToast(
-          `⚠️ 下载完成：成功 ${successCount} 个，失败 ${failCount} 个`,
-          'info'
-        );
-      }
+          await new Promise((resolve) => setTimeout(resolve, 250));
+        },
+        autoStart: true,
+      });
     } catch (error: any) {
       console.error('批量下载失败:', error);
       showToast(`❌ ${error.message || '批量下载失败'}`, 'error');

@@ -101,7 +101,7 @@ export async function fetchPlayUrlThroughBackground(args: {
   return response.data as PlayUrlResponse;
 }
 
-export async function requestDownloadUrl(url: string, filename: string) {
+export async function requestDownloadUrl(url: string, filename: string): Promise<number> {
   const normalizedUrl = normalizeMediaUrl(url);
   if (!normalizedUrl) throw new Error('下载地址为空');
 
@@ -113,6 +113,14 @@ export async function requestDownloadUrl(url: string, filename: string) {
   if (!response?.success) {
     throw new Error(response?.error || '发起下载失败');
   }
+
+  const downloadId = Number(response?.data?.downloadId);
+  if (!downloadId) {
+    // 兼容旧实现：如果 background 没回 downloadId，也不阻断流程
+    return 0;
+  }
+
+  return downloadId;
 }
 
 export function getProgressiveUrls(resp: PlayUrlResponse) {
@@ -127,4 +135,3 @@ export function getDashUrls(resp: PlayUrlResponse) {
   const audioUrl = normalizeMediaUrl(pickBestDashUrl(resp.data?.dash?.audio));
   return { videoUrl, audioUrl };
 }
-

@@ -3,6 +3,34 @@ import { debugLog, errorLog } from '@/utils/debug';
 
 debugLog('🔧 Bilibili Buttons - Background Service Worker 已启动');
 
+const downloadIdToTabId = new Map<number, number>();
+
+chrome.downloads.onChanged.addListener((delta) => {
+  try {
+    const tabId = downloadIdToTabId.get(delta.id);
+    if (!tabId) return;
+
+    const state = delta.state?.current;
+    const error = delta.error?.current;
+
+    // 把下载状态推送给对应 tab 的 content script
+    chrome.tabs.sendMessage(tabId, {
+      type: 'DOWNLOAD_CHANGED',
+      data: {
+        downloadId: delta.id,
+        state,
+        error,
+      },
+    });
+
+    if (state === 'complete' || state === 'interrupted') {
+      downloadIdToTabId.delete(delta.id);
+    }
+  } catch (err) {
+    errorLog('下载状态推送失败:', err);
+  }
+});
+
 // 监听扩展安装
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
@@ -14,7 +42,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 
 // 监听来自 content script 的消息
-chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   debugLog('📨 收到消息:', request);
 
   // 处理字幕API请求（带Cookie）
@@ -51,8 +79,9 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 
   // 处理远程文件下载（直接 url -> chrome.downloads）
   if (request.type === 'DOWNLOAD_URL') {
-    handleUrlDownload(request.data)
-      .then(() => sendResponse({ success: true }))
+    const tabId = sender.tab?.id;
+    handleUrlDownload(request.data, tabId)
+      .then((downloadId) => sendResponse({ success: true, data: { downloadId } }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
     return true; // 异步响应
   }
@@ -186,14 +215,20 @@ async function handleDownload(data: { filename: string; content: string }) {
 /**
  * 处理远程文件下载
  */
-async function handleUrlDownload(data: { url: string; filename: string }) {
+async function handleUrlDownload(data: { url: string; filename: string }, tabId?: number) {
   try {
-    await chrome.downloads.download({
+    const downloadId = await chrome.downloads.download({
       url: data.url,
       filename: data.filename,
       saveAs: false,
       conflictAction: 'uniquify',
     });
+
+    if (typeof tabId === 'number') {
+      downloadIdToTabId.set(downloadId, tabId);
+    }
+
+    return downloadId;
   } catch (error) {
     errorLog('下载失败:', error);
     throw error;
