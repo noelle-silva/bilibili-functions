@@ -1,7 +1,13 @@
-export async function downloadTextThroughBackground(filename: string, content: string) {
+export type TextDownloadKind = 'subtitle' | 'comment';
+
+export async function downloadTextThroughBackground(
+  filename: string,
+  content: string,
+  kind: TextDownloadKind = 'subtitle'
+) {
   const response: any = await chrome.runtime.sendMessage({
-    type: 'DOWNLOAD_SUBTITLE',
-    data: { filename, content },
+    type: 'DOWNLOAD_TEXT',
+    data: { filename, content, kind },
   });
 
   if (!response?.success) {
@@ -12,4 +18,3 @@ export async function downloadTextThroughBackground(filename: string, content: s
   if (!downloadId) return 0;
   return downloadId;
 }
-

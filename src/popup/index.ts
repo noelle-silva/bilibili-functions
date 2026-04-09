@@ -20,6 +20,11 @@ const MODULES: ModuleDef[] = [
     description: '选择多个分P并批量下载字幕TXT文件',
   },
   {
+    id: 'comment-download',
+    name: '下载评论',
+    description: '导出当前视频评论为 TXT（含楼中楼，过大自动拆分）',
+  },
+  {
     id: 'video-download',
     name: '下载视频',
     description: '一键下载当前分P视频（可能分离音视频）',

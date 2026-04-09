@@ -5,7 +5,7 @@ debugLog('🔧 Bilibili Buttons - Background Service Worker 已启动');
 
 const downloadIdToTabId = new Map<number, number>();
 
-type DownloadTaskKind = 'subtitle' | 'video' | 'unknown';
+type DownloadTaskKind = 'subtitle' | 'video' | 'comment' | 'unknown';
 type DownloadTaskState = 'in_progress' | 'complete' | 'interrupted';
 type DownloadTask = {
   downloadId: number;
@@ -140,6 +140,14 @@ chrome.runtime.onInstalled.addListener((details) => {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   debugLog('📨 收到消息:', request);
 
+  // 通用：携带 Cookie 请求 B 站 API
+  if (request.type === 'FETCH_BILI_API') {
+    handleBiliApi(request.data)
+      .then((result) => sendResponse({ success: true, data: result }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
   // 处理字幕API请求（带Cookie）
   if (request.type === 'FETCH_SUBTITLE_API') {
     handleSubtitleAPI(request.data)
@@ -159,10 +167,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // 处理下载请求
   if (request.type === 'DOWNLOAD_SUBTITLE') {
     const tabId = sender.tab?.id;
-    handleDownload(request.data, tabId)
+    handleDownload({ ...request.data, kind: 'subtitle' }, tabId)
       .then((downloadId) => sendResponse({ success: true, data: { downloadId } }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
     return true; // 异步响应
+  }
+
+  // 通用：下载文本（用于评论等）
+  if (request.type === 'DOWNLOAD_TEXT') {
+    const tabId = sender.tab?.id;
+    handleDownload(request.data, tabId)
+      .then((downloadId) => sendResponse({ success: true, data: { downloadId } }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
   }
 
   // 处理播放地址 API 请求（带 Cookie）
@@ -197,6 +214,39 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
+type BiliApiArgs = { url: string; bvid?: string };
+
+function buildBiliHeaders(bvid?: string): HeadersInit {
+  const headers: HeadersInit = {
+    'User-Agent':
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Connection': 'keep-alive',
+  };
+
+  if (bvid) {
+    headers['Referer'] = `https://www.bilibili.com/video/${bvid}/`;
+    headers['Origin'] = 'https://www.bilibili.com';
+  }
+
+  return headers;
+}
+
+async function handleBiliApi(data: BiliApiArgs) {
+  try {
+    debugLog('🌐 Background 请求 B 站 API:', data.url);
+    const response = await fetch(data.url, {
+      credentials: 'include',
+      headers: buildBiliHeaders(data.bvid),
+    });
+    return await response.json();
+  } catch (error) {
+    errorLog('❌ Background 请求失败:', error);
+    throw error;
+  }
+}
+
 /**
  * 处理字幕 API 请求（会携带 Cookie 和完整的 headers）
  * 参考成功的 Python 实现，使用完整的浏览器 headers
@@ -205,23 +255,9 @@ async function handleSubtitleAPI(data: { url: string; bvid?: string }) {
   try {
     debugLog('🔍 Background 请求字幕 API:', data.url);
 
-    // 构建完整的 headers（模拟浏览器请求）
-    const headers: HeadersInit = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
-      'Accept': 'application/json, text/plain, */*',
-      'Accept-Language': 'en-US,en;q=0.5',
-      'Connection': 'keep-alive',
-    };
-
-    // 如果有 bvid，设置 Referer 和 Origin
-    if (data.bvid) {
-      headers['Referer'] = `https://www.bilibili.com/video/${data.bvid}/`;
-      headers['Origin'] = 'https://www.bilibili.com';
-    }
-
     const response = await fetch(data.url, {
       credentials: 'include', // 携带 Cookie
-      headers,
+      headers: buildBiliHeaders(data.bvid),
     });
     const result = await response.json();
     debugLog('✅ Background 获取到响应');
@@ -239,22 +275,9 @@ async function handlePlayUrlAPI(data: { url: string; bvid?: string }) {
   try {
     debugLog('🎬 Background 请求播放地址 API:', data.url);
 
-    const headers: HeadersInit = {
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
-      'Accept': 'application/json, text/plain, */*',
-      'Accept-Language': 'en-US,en;q=0.5',
-      'Connection': 'keep-alive',
-    };
-
-    if (data.bvid) {
-      headers['Referer'] = `https://www.bilibili.com/video/${data.bvid}/`;
-      headers['Origin'] = 'https://www.bilibili.com';
-    }
-
     const response = await fetch(data.url, {
       credentials: 'include',
-      headers,
+      headers: buildBiliHeaders(data.bvid),
     });
 
     const result = await response.json();
@@ -278,18 +301,10 @@ async function handleSubtitleFile(data: { url: string }) {
 
     debugLog('📥 Background 下载字幕文件:', url);
 
-    // 添加完整的 headers
-    const headers: HeadersInit = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
-      'Accept': 'application/json, text/plain, */*',
-      'Accept-Language': 'en-US,en;q=0.5',
-      'Connection': 'keep-alive',
-    };
-
     const response = await fetch(url, {
       cache: 'no-store',
       credentials: 'include',
-      headers,
+      headers: buildBiliHeaders(),
     });
     const result = await response.json();
 
@@ -304,13 +319,16 @@ async function handleSubtitleFile(data: { url: string }) {
 /**
  * 处理下载
  */
-async function handleDownload(data: { filename: string; content: string }, tabId?: number) {
+async function handleDownload(
+  data: { filename: string; content: string; kind?: DownloadTaskKind },
+  tabId?: number
+) {
   try {
     // MV3 background(service worker) 环境不支持 URL.createObjectURL
     // 用 data: URL 直接交给 chrome.downloads
     const url = `data:text/plain;charset=utf-8,${encodeURIComponent(data.content)}`;
     if (url.length > 1_900_000) {
-      throw new Error('字幕内容过大，无法通过 data URL 下载（建议拆分或改用离屏文档方案）');
+      throw new Error('文本内容过大，无法通过 data URL 下载（建议拆分或改用离屏文档方案）');
     }
 
     const downloadId = await chrome.downloads.download({
@@ -322,7 +340,7 @@ async function handleDownload(data: { filename: string; content: string }, tabId
 
     trackDownloadCreated({
       downloadId,
-      kind: 'subtitle',
+      kind: data.kind || 'unknown',
       filename: data.filename,
       url: undefined,
     });

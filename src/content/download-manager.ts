@@ -1,6 +1,6 @@
 type DownloadTask = {
   downloadId: number;
-  kind: 'subtitle' | 'video' | 'unknown';
+  kind: 'subtitle' | 'video' | 'comment' | 'unknown';
   filename: string;
   state: 'in_progress' | 'complete' | 'interrupted';
   error?: string;
@@ -50,6 +50,7 @@ function basename(filename: string) {
 }
 
 function kindLabel(kind: DownloadTask['kind'], filename: string) {
+  if (kind === 'comment') return '评论';
   if (kind === 'subtitle' || filename.toLowerCase().endsWith('.txt')) return '字幕';
   if (kind === 'video') return '视频';
   return '下载';

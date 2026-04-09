@@ -5,6 +5,7 @@ import { isVideoPage } from '@/utils/dom';
 // 导入模块
 import { subtitleCopyModule } from '@/modules/subtitle-copy';
 import { batchDownloadModule } from '@/modules/batch-download';
+import { commentDownloadModule } from '@/modules/comment-download';
 import { videoDownloadModule } from '@/modules/video-download';
 import { batchVideoDownloadModule } from '@/modules/batch-video-download';
 import { setupDownloadManagerListener } from '@/content/download-manager';
@@ -26,6 +27,7 @@ async function init() {
     // 注册模块
     buttonManager.register(subtitleCopyModule);
     buttonManager.register(batchDownloadModule);
+    buttonManager.register(commentDownloadModule);
     buttonManager.register(videoDownloadModule);
     buttonManager.register(batchVideoDownloadModule);
 
