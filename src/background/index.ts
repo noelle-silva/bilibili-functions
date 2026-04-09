@@ -40,6 +40,22 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       .catch((error) => sendResponse({ success: false, error: error.message }));
     return true; // 异步响应
   }
+
+  // 处理播放地址 API 请求（带 Cookie）
+  if (request.type === 'FETCH_PLAYURL_API') {
+    handlePlayUrlAPI(request.data)
+      .then((result) => sendResponse({ success: true, data: result }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true; // 异步响应
+  }
+
+  // 处理远程文件下载（直接 url -> chrome.downloads）
+  if (request.type === 'DOWNLOAD_URL') {
+    handleUrlDownload(request.data)
+      .then(() => sendResponse({ success: true }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true; // 异步响应
+  }
 });
 
 /**
@@ -73,6 +89,40 @@ async function handleSubtitleAPI(data: { url: string; bvid?: string }) {
     return result;
   } catch (error) {
     errorLog('❌ Background 请求失败:', error);
+    throw error;
+  }
+}
+
+/**
+ * 处理播放地址 API 请求（会携带 Cookie 和完整的 headers）
+ */
+async function handlePlayUrlAPI(data: { url: string; bvid?: string }) {
+  try {
+    debugLog('🎬 Background 请求播放地址 API:', data.url);
+
+    const headers: HeadersInit = {
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
+      'Accept': 'application/json, text/plain, */*',
+      'Accept-Language': 'en-US,en;q=0.5',
+      'Connection': 'keep-alive',
+    };
+
+    if (data.bvid) {
+      headers['Referer'] = `https://www.bilibili.com/video/${data.bvid}/`;
+      headers['Origin'] = 'https://www.bilibili.com';
+    }
+
+    const response = await fetch(data.url, {
+      credentials: 'include',
+      headers,
+    });
+
+    const result = await response.json();
+    debugLog('✅ Background 获取到播放地址响应');
+    return result;
+  } catch (error) {
+    errorLog('❌ Background 请求播放地址失败:', error);
     throw error;
   }
 }
@@ -127,6 +177,23 @@ async function handleDownload(data: { filename: string; content: string }) {
     });
 
     URL.revokeObjectURL(url);
+  } catch (error) {
+    errorLog('下载失败:', error);
+    throw error;
+  }
+}
+
+/**
+ * 处理远程文件下载
+ */
+async function handleUrlDownload(data: { url: string; filename: string }) {
+  try {
+    await chrome.downloads.download({
+      url: data.url,
+      filename: data.filename,
+      saveAs: false,
+      conflictAction: 'uniquify',
+    });
   } catch (error) {
     errorLog('下载失败:', error);
     throw error;

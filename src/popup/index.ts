@@ -14,6 +14,12 @@ const MODULES = [
     icon: '📥',
     description: '选择多个分P并批量下载字幕TXT文件',
   },
+  {
+    id: 'video-download',
+    name: '下载视频',
+    icon: '🎬',
+    description: '一键下载当前分P视频（可能分离音视频）',
+  },
 ];
 
 /**

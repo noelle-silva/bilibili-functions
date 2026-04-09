@@ -5,6 +5,7 @@ import { isVideoPage } from '@/utils/dom';
 // 导入模块
 import { subtitleCopyModule } from '@/modules/subtitle-copy';
 import { batchDownloadModule } from '@/modules/batch-download';
+import { videoDownloadModule } from '@/modules/video-download';
 
 console.log('🚀 Bilibili 自定义按钮扩展已加载');
 
@@ -23,6 +24,7 @@ async function init() {
     // 注册模块
     buttonManager.register(subtitleCopyModule);
     buttonManager.register(batchDownloadModule);
+    buttonManager.register(videoDownloadModule);
 
     // 注入按钮
     const container = await domInjector.inject();
