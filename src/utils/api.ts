@@ -85,6 +85,33 @@ export async function getVideoPageList(bvid: string, aid?: string): Promise<Vide
 }
 
 /**
+ * 根据 bvid 获取视频标题（通过 Background，避免 CORS / 保证携带 Cookie）
+ */
+export async function getVideoTitleByBvid(bvid: string): Promise<string> {
+  if (!bvid) return '';
+
+  const params = new URLSearchParams({ bvid });
+  const url = `https://api.bilibili.com/x/web-interface/view?${params.toString()}`;
+  debugLog('🧾 请求视频信息(标题) (通过Background):', url);
+
+  const response: any = await chrome.runtime.sendMessage({
+    type: 'FETCH_BILI_API',
+    data: { url, bvid },
+  });
+
+  if (!response?.success) {
+    throw new Error(response?.error || '获取视频标题失败');
+  }
+
+  const data = response.data as { code?: number; message?: string; data?: { title?: string } };
+  if (data?.code !== 0) {
+    throw new Error(`获取视频标题失败: ${data?.message || '未知错误'}`);
+  }
+
+  return (data?.data?.title || '').trim();
+}
+
+/**
  * 获取视频标题
  */
 export function getVideoTitle(): string {

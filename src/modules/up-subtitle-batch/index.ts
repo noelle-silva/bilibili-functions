@@ -1,4 +1,4 @@
-import { getVideoPageList, getVideoSubtitleText } from '@/utils/api';
+import { getVideoPageList, getVideoSubtitleText, getVideoTitleByBvid } from '@/utils/api';
 import { openBatchProgressDialog } from '@/utils/batch-progress';
 import { showToast } from '@/utils/dom';
 import { waitForDownloadCompletion } from '@/utils/download-tracker';
@@ -44,14 +44,29 @@ function findListRoot(): HTMLElement {
   return document.body;
 }
 
-function pickTitleFromCard(card: HTMLElement, fallback: string) {
-  const titleEl =
-    (card.querySelector('a.title') as HTMLElement | null) ||
-    (card.querySelector('[title]') as HTMLElement | null) ||
-    (card.querySelector('a[href*="/video/BV"]') as HTMLElement | null);
+function pickTitleFromAnchors(anchors: HTMLAnchorElement[], fallback: string) {
+  const candidates: string[] = [];
+  for (const a of anchors) {
+    const t1 = (a.getAttribute('title') || '').trim();
+    const t2 = (a.getAttribute('aria-label') || '').trim();
+    const t3 = (a.textContent || '').trim();
+    const img = a.querySelector('img');
+    const t4 = (img?.getAttribute('alt') || img?.getAttribute('title') || '').trim();
+    if (t1) candidates.push(t1);
+    if (t2) candidates.push(t2);
+    if (t4) candidates.push(t4);
+    if (t3) candidates.push(t3);
+  }
 
-  const t = (titleEl?.getAttribute('title') || titleEl?.textContent || '').trim();
-  return t || fallback;
+  const filtered = candidates
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .filter((x) => x !== fallback)
+    .filter((x) => x.length >= 2)
+    .filter((x) => !/^(更多|播放|收藏|分享|弹幕|评论|进入|查看更多)$/u.test(x));
+
+  filtered.sort((a, b) => b.length - a.length);
+  return filtered[0] || fallback;
 }
 
 function ensureStyle() {
@@ -181,6 +196,7 @@ export function initUpSubtitleBatch(): () => void {
 
   let selectionMode = false;
   const selected = new Map<string, SelectedVideo>();
+  const titleCache = new Map<string, string>();
 
   const listRoot = findListRoot();
 
@@ -216,18 +232,22 @@ export function initUpSubtitleBatch(): () => void {
     const current = selected.get(bvid);
     if (current) return current;
     const fallback = bvid;
-    const title = pickTitleFromCard(card, fallback);
+    const dsTitle = (card.dataset.ussbTitle || '').trim();
+    // 注意：不要用宽泛的 DOM 查询回退到“当前页面标题”，否则会出现“前缀串台”
+    const title = dsTitle || fallback;
     return { bvid, title };
   };
 
-  const tagCard = (card: HTMLElement, bvid: string) => {
+  const tagCard = (card: HTMLElement, bvid: string, title: string) => {
     if (card.dataset.ussbCard === '1' && card.dataset.ussbBvid === bvid) {
+      if (title) card.dataset.ussbTitle = title;
       applySelectionToCard(card, bvid);
       return;
     }
 
     card.dataset.ussbCard = '1';
     card.dataset.ussbBvid = bvid;
+    if (title) card.dataset.ussbTitle = title;
 
     const pos = window.getComputedStyle(card).position;
     if (pos === 'static') {
@@ -264,7 +284,8 @@ export function initUpSubtitleBatch(): () => void {
 
     for (const [bvid, as] of bvidToAnchors.entries()) {
       const card = pickCardFromAnchors(listRoot, as);
-      tagCard(card, bvid);
+      const title = pickTitleFromAnchors(as, bvid);
+      tagCard(card, bvid, title);
     }
   };
 
@@ -301,6 +322,7 @@ export function initUpSubtitleBatch(): () => void {
       card.classList.remove('ussb-selected');
       delete card.dataset.ussbCard;
       delete card.dataset.ussbBvid;
+      delete card.dataset.ussbTitle;
       const check = card.querySelector('.ussb-check');
       if (check) check.remove();
 
@@ -366,13 +388,14 @@ export function initUpSubtitleBatch(): () => void {
 
     for (const v of videos) {
       try {
+        const resolvedTitle = await resolveVideoTitle(v.bvid, v.title || v.bvid);
         const pageList = await getVideoPageList(v.bvid);
         if (pageList.length === 0) {
           skipped.push({ bvid: v.bvid, error: '未找到分P信息' });
           continue;
         }
 
-        const safeTitle = v.title || v.bvid;
+        const safeTitle = resolvedTitle || v.title || v.bvid;
         pageList.forEach((p) => {
           const cid = String(p.cid);
           items.push({
@@ -394,6 +417,21 @@ export function initUpSubtitleBatch(): () => void {
 
     return { items, skipped };
   };
+
+  async function resolveVideoTitle(bvid: string, preferred: string) {
+    const cached = titleCache.get(bvid);
+    if (cached) return cached;
+    try {
+      const real = await getVideoTitleByBvid(bvid);
+      const picked = real || preferred || bvid;
+      titleCache.set(bvid, picked);
+      return picked;
+    } catch {
+      const picked = preferred || bvid;
+      titleCache.set(bvid, picked);
+      return picked;
+    }
+  }
 
   const startSubtitleDownload = async () => {
     if (!selectionMode) return;
@@ -430,9 +468,8 @@ export function initUpSubtitleBatch(): () => void {
           const baseTitle = sanitizeFilename(meta.title || meta.bvid);
           const partTitle = sanitizeFilename(meta.part || '');
 
-          const filename = partTitle
-            ? `${baseTitle}_P${meta.page}_${partTitle}.txt`
-            : `${baseTitle}_P${meta.page}.txt`;
+          const trimmedPart = partTitle && partTitle !== baseTitle ? partTitle : '';
+          const filename = trimmedPart ? `${baseTitle}_P${meta.page}_${trimmedPart}.txt` : `${baseTitle}_P${meta.page}.txt`;
 
           const downloadId = await downloadTextThroughBackground(filename, subtitleText, 'subtitle');
 
@@ -485,9 +522,8 @@ export function initUpSubtitleBatch(): () => void {
 
           const baseTitle = sanitizeFilename(meta.title || meta.bvid);
           const partTitle = sanitizeFilename(meta.part || '');
-          const filenamePrefix = partTitle
-            ? `${baseTitle}_P${meta.page}_${partTitle}`
-            : `${baseTitle}_P${meta.page}`;
+          const trimmedPart = partTitle && partTitle !== baseTitle ? partTitle : '';
+          const filenamePrefix = trimmedPart ? `${baseTitle}_P${meta.page}_${trimmedPart}` : `${baseTitle}_P${meta.page}`;
 
           const result = await downloadPartVideo({
             cid: meta.cid,

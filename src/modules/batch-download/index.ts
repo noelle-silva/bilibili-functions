@@ -5,6 +5,7 @@ import { createBatchDownloadDialog } from './dialog';
 import { openBatchProgressDialog } from '@/utils/batch-progress';
 import { downloadTextThroughBackground } from '@/utils/text-download';
 import { waitForDownloadCompletion } from '@/utils/download-tracker';
+import { sanitizeFilename } from '@/utils/video-download';
 
 /**
  * 批量下载字幕模块
@@ -44,7 +45,7 @@ export const batchDownloadModule: ButtonModule = {
       showToast(`开始处理 ${selectedPages.length} 个字幕任务...`, 'info');
 
       const videoTitle = videoInfo.title || getVideoTitle();
-      const sanitizedTitle = videoTitle.replace(/[\\/:*?"<>|]/g, '_');
+      const baseTitle = sanitizeFilename(videoTitle);
 
       openBatchProgressDialog({
         title: '批量下载字幕 - 任务进度',
@@ -57,8 +58,9 @@ export const batchDownloadModule: ButtonModule = {
           const page = item.meta as any;
           const subtitleText = await getVideoSubtitleText(page.cid, videoInfo.bvid, videoInfo.aid);
 
-          const sanitizedPart = String(page.part || '').replace(/[\\/:*?"<>|]/g, '_');
-          const filename = `${sanitizedTitle}_P${page.page}_${sanitizedPart || 'part'}.txt`;
+          const partTitle = sanitizeFilename(String(page.part || ''));
+          const trimmedPart = partTitle && partTitle !== baseTitle ? partTitle : '';
+          const filename = trimmedPart ? `P${page.page}_${trimmedPart}.txt` : `${baseTitle}_P${page.page}.txt`;
           const downloadId = await downloadTextThroughBackground(filename, subtitleText);
 
           await new Promise((resolve) => setTimeout(resolve, 250));
