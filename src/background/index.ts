@@ -63,8 +63,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   // 处理下载请求
   if (request.type === 'DOWNLOAD_SUBTITLE') {
-    handleDownload(request.data)
-      .then(() => sendResponse({ success: true }))
+    const tabId = sender.tab?.id;
+    handleDownload(request.data, tabId)
+      .then((downloadId) => sendResponse({ success: true, data: { downloadId } }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
     return true; // 异步响应
   }
@@ -194,18 +195,27 @@ async function handleSubtitleFile(data: { url: string }) {
 /**
  * 处理下载
  */
-async function handleDownload(data: { filename: string; content: string }) {
+async function handleDownload(data: { filename: string; content: string }, tabId?: number) {
   try {
-    const blob = new Blob([data.content], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
+    // MV3 background(service worker) 环境不支持 URL.createObjectURL
+    // 用 data: URL 直接交给 chrome.downloads
+    const url = `data:text/plain;charset=utf-8,${encodeURIComponent(data.content)}`;
+    if (url.length > 1_900_000) {
+      throw new Error('字幕内容过大，无法通过 data URL 下载（建议拆分或改用离屏文档方案）');
+    }
 
-    await chrome.downloads.download({
+    const downloadId = await chrome.downloads.download({
       url,
       filename: data.filename,
       saveAs: false,
+      conflictAction: 'uniquify',
     });
 
-    URL.revokeObjectURL(url);
+    if (typeof tabId === 'number') {
+      downloadIdToTabId.set(downloadId, tabId);
+    }
+
+    return downloadId;
   } catch (error) {
     errorLog('下载失败:', error);
     throw error;

@@ -1,8 +1,10 @@
 import type { ButtonModule } from '@/core/types';
 import { getVideoPageList, getVideoSubtitleText, getVideoTitle } from '@/utils/api';
-import { showToast, downloadTextFile } from '@/utils/dom';
+import { showToast } from '@/utils/dom';
 import { createBatchDownloadDialog } from './dialog';
 import { openBatchProgressDialog } from '@/utils/batch-progress';
+import { downloadTextThroughBackground } from '@/utils/text-download';
+import { waitForDownloadCompletion } from '@/utils/download-tracker';
 
 /**
  * 批量下载字幕模块
@@ -58,9 +60,13 @@ export const batchDownloadModule: ButtonModule = {
 
           const sanitizedPart = String(page.part || '').replace(/[\\/:*?"<>|]/g, '_');
           const filename = `${sanitizedTitle}_P${page.page}_${sanitizedPart || 'part'}.txt`;
-          downloadTextFile(filename, subtitleText);
+          const downloadId = await downloadTextThroughBackground(filename, subtitleText);
 
           await new Promise((resolve) => setTimeout(resolve, 250));
+
+          if (downloadId) {
+            return { completion: waitForDownloadCompletion(downloadId) };
+          }
         },
         autoStart: true,
       });
