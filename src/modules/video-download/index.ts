@@ -26,7 +26,6 @@ export const videoDownloadModule: ButtonModule = {
 
   button: {
     text: '下载视频',
-    icon: '🎬',
     position: 300,
   },
 

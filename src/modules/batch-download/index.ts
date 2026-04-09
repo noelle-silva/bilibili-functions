@@ -17,7 +17,6 @@ export const batchDownloadModule: ButtonModule = {
 
   button: {
     text: '批量下载',
-    icon: '📥',
     position: 200,
   },
 

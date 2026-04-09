@@ -1,30 +1,33 @@
 import { getModuleConfig, updateModuleConfig, saveModuleConfig } from '@/utils/storage';
 import type { ModuleConfig } from '@/core/types';
 
+type ModuleDef = {
+  id: string;
+  name: string;
+  description: string;
+  icon?: string;
+};
+
 // 模块定义（与实际模块保持一致）
-const MODULES = [
+const MODULES: ModuleDef[] = [
   {
     id: 'subtitle-copy',
     name: '复制字幕',
-    icon: '📋',
     description: '一键复制当前视频的字幕到剪贴板',
   },
   {
     id: 'batch-download',
     name: '批量下载字幕',
-    icon: '📥',
     description: '选择多个分P并批量下载字幕TXT文件',
   },
   {
     id: 'video-download',
     name: '下载视频',
-    icon: '🎬',
     description: '一键下载当前分P视频（可能分离音视频）',
   },
   {
     id: 'batch-video-download',
     name: '批量下载视频',
-    icon: '🎞️',
     description: '选择多个分P并批量下载视频（可能分离音视频）',
   },
 ];
@@ -83,7 +86,7 @@ async function renderModuleList() {
 
     item.innerHTML = `
       <div style="display: flex; align-items: flex-start;">
-        <div class="module-icon">${module.icon}</div>
+        ${module.icon ? `<div class="module-icon">${module.icon}</div>` : ''}
         <div class="module-info">
           <div class="module-name">${module.name}</div>
           <div class="module-description">${module.description}</div>

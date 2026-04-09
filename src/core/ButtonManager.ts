@@ -10,6 +10,7 @@ export class ButtonManager {
   private modules: Map<string, ButtonModule> = new Map();
   private container: HTMLElement | null = null;
   private rendered: boolean = false;
+  private styleInstalled: boolean = false;
 
   /**
    * 注册模块
@@ -54,6 +55,7 @@ export class ButtonManager {
   async render(targetElement: HTMLElement): Promise<void> {
     this.container = targetElement;
     this.rendered = true;
+    this.ensureStyles();
 
     // 清空容器内的按钮
     const buttons = targetElement.querySelectorAll('.bilibili-custom-button');
@@ -89,49 +91,13 @@ export class ButtonManager {
 
     // 按钮内容
     const content = document.createElement('span');
-    if (module.button.icon) {
-      content.innerHTML = `${module.button.icon} ${module.button.text}`;
-    } else {
-      content.textContent = module.button.text;
-    }
+    content.textContent = module.button.text;
     button.appendChild(content);
-
-    // 🎨 B站原生按钮风格
-    button.style.cssText = `
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 8px 16px;
-      background: transparent;
-      border: 1px solid #e5e9ef;
-      border-radius: 4px;
-      color: #18191c;
-      font-size: 13px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      font-weight: 500;
-      white-space: nowrap;
-    `;
-
-    // 悬停效果（模仿B站原生）
-    button.addEventListener('mouseenter', () => {
-      button.style.background = '#f6f7f9';
-      button.style.borderColor = '#00aeec';
-      button.style.color = '#00aeec';
-    });
-
-    button.addEventListener('mouseleave', () => {
-      button.style.background = 'transparent';
-      button.style.borderColor = '#e5e9ef';
-      button.style.color = '#18191c';
-    });
 
     // 点击事件
     button.addEventListener('click', async () => {
       try {
         button.disabled = true;
-        button.style.opacity = '0.6';
-        button.style.cursor = 'not-allowed';
 
         // 获取视频信息（异步从页面上下文获取）
         const videoInfo = await this.getVideoInfo();
@@ -147,12 +113,76 @@ export class ButtonManager {
         // 错误会在模块内部处理和显示
       } finally {
         button.disabled = false;
-        button.style.opacity = '1';
-        button.style.cursor = 'pointer';
       }
     });
 
     return button;
+  }
+
+  private ensureStyles() {
+    if (this.styleInstalled) return;
+    this.styleInstalled = true;
+
+    const styleId = 'bilibili-custom-buttons-style';
+    if (document.getElementById(styleId)) return;
+
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      .bilibili-custom-buttons-container {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      }
+
+      .bilibili-custom-button {
+        appearance: none;
+        -webkit-appearance: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 32px;
+        padding: 0 14px;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(229, 233, 239, 0.95);
+        border-radius: 999px;
+        color: #18191c;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease, color 0.12s ease, background 0.12s ease, opacity 0.12s ease;
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+        backdrop-filter: saturate(160%) blur(10px);
+      }
+
+      .bilibili-custom-button:hover:not(:disabled) {
+        background: #ffffff;
+        border-color: rgba(0, 174, 236, 0.75);
+        color: #00aeec;
+        box-shadow: 0 10px 28px rgba(0, 174, 236, 0.18);
+        transform: translateY(-1px);
+      }
+
+      .bilibili-custom-button:active:not(:disabled) {
+        transform: translateY(0);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.10);
+      }
+
+      .bilibili-custom-button:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 174, 236, 0.25);
+        border-color: rgba(0, 174, 236, 0.9);
+      }
+
+      .bilibili-custom-button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+    `;
+
+    document.head.appendChild(style);
   }
 
   /**
