@@ -4,6 +4,7 @@ import { showToast } from '@/utils/dom';
 import { waitForDownloadCompletion } from '@/utils/download-tracker';
 import { downloadTextThroughBackground } from '@/utils/text-download';
 import { sanitizeFilename } from '@/utils/video-download';
+import { downloadPartVideo } from '@/utils/part-video-download';
 
 type SelectedVideo = {
   bvid: string;
@@ -69,16 +70,16 @@ function ensureStyle() {
 	
 	    [data-ussb-card="1"] .ussb-check { display: none; }
 	    .${BODY_MODE_CLASS} [data-ussb-card="1"] { cursor: pointer; transition: box-shadow 0.12s ease, transform 0.12s ease; }
-	    .${BODY_MODE_CLASS} [data-ussb-card="1"]::after {
-	      content: '';
-	      position: absolute;
-	      inset: 0;
-	      border: 2px dashed rgba(0, 174, 236, 0.35);
-	      border-radius: inherit;
-	      pointer-events: none;
-	      opacity: 0.9;
-	      transition: border-color 0.12s ease, opacity 0.12s ease;
-	    }
+    .${BODY_MODE_CLASS} [data-ussb-card="1"]::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border: 2px dashed rgba(0, 174, 236, 0.35);
+      border-radius: 10px;
+      pointer-events: none;
+      opacity: 0.9;
+      transition: border-color 0.12s ease, opacity 0.12s ease;
+    }
 	    .${BODY_MODE_CLASS} [data-ussb-card="1"]:hover { transform: translateY(-1px); }
 	    .${BODY_MODE_CLASS} [data-ussb-card="1"]:hover::after { border-color: rgba(0, 174, 236, 0.75); }
 	    .${BODY_MODE_CLASS} [data-ussb-card="1"].ussb-selected::after { border-style: solid; border-color: #00aeec; opacity: 1; }
@@ -129,7 +130,8 @@ function pickCardFromAnchors(listRoot: HTMLElement, anchors: HTMLAnchorElement[]
 
 function createBar(args: {
   onToggle: () => void;
-  onDownload: () => void;
+  onDownloadSubtitle: () => void;
+  onDownloadVideo: () => void;
 }) {
   const existing = document.getElementById(BAR_ID);
   if (existing) existing.remove();
@@ -142,18 +144,25 @@ function createBar(args: {
   toggleBtn.textContent = '批量选择';
   toggleBtn.addEventListener('click', args.onToggle);
 
-  const downloadBtn = document.createElement('button');
-  downloadBtn.className = 'ussb-btn primary';
-  downloadBtn.textContent = '下载字幕';
-  downloadBtn.disabled = true;
-  downloadBtn.addEventListener('click', args.onDownload);
+  const downloadSubtitleBtn = document.createElement('button');
+  downloadSubtitleBtn.className = 'ussb-btn';
+  downloadSubtitleBtn.textContent = '下载字幕';
+  downloadSubtitleBtn.disabled = true;
+  downloadSubtitleBtn.addEventListener('click', args.onDownloadSubtitle);
+
+  const downloadVideoBtn = document.createElement('button');
+  downloadVideoBtn.className = 'ussb-btn primary';
+  downloadVideoBtn.textContent = '下载视频';
+  downloadVideoBtn.disabled = true;
+  downloadVideoBtn.addEventListener('click', args.onDownloadVideo);
 
   const count = document.createElement('span');
   count.className = 'ussb-count';
   count.textContent = '已选 0';
 
   bar.appendChild(toggleBtn);
-  bar.appendChild(downloadBtn);
+  bar.appendChild(downloadSubtitleBtn);
+  bar.appendChild(downloadVideoBtn);
   bar.appendChild(count);
 
   document.body.appendChild(bar);
@@ -161,7 +170,8 @@ function createBar(args: {
   return {
     el: bar,
     toggleBtn,
-    downloadBtn,
+    downloadSubtitleBtn,
+    downloadVideoBtn,
     countEl: count,
   };
 }
@@ -180,17 +190,20 @@ export function initUpSubtitleBatch(): () => void {
 
   const bar = createBar({
     onToggle: () => toggleSelectionMode(),
-    onDownload: () => void startDownload(),
+    onDownloadSubtitle: () => void startSubtitleDownload(),
+    onDownloadVideo: () => void startVideoDownload(),
   });
 
   const setBusy = (busy: boolean) => {
     bar.toggleBtn.disabled = busy;
-    bar.downloadBtn.disabled = busy || selected.size === 0;
+    bar.downloadSubtitleBtn.disabled = busy || selected.size === 0;
+    bar.downloadVideoBtn.disabled = busy || selected.size === 0;
   };
 
   const renderBar = () => {
     bar.toggleBtn.textContent = selectionMode ? '退出选择' : '批量选择';
-    bar.downloadBtn.disabled = !selectionMode || selected.size === 0;
+    bar.downloadSubtitleBtn.disabled = !selectionMode || selected.size === 0;
+    bar.downloadVideoBtn.disabled = !selectionMode || selected.size === 0;
     bar.countEl.textContent = `已选 ${selected.size}`;
   };
 
@@ -382,7 +395,7 @@ export function initUpSubtitleBatch(): () => void {
     return { items, skipped };
   };
 
-  const startDownload = async () => {
+  const startSubtitleDownload = async () => {
     if (!selectionMode) return;
     if (selected.size === 0) {
       showToast('请先勾选要下载字幕的视频', 'info');
@@ -433,6 +446,65 @@ export function initUpSubtitleBatch(): () => void {
       });
     } catch (err: any) {
       showToast(`❌ ${err?.message || '批量下载失败'}`, 'error');
+    } finally {
+      setBusy(false);
+      renderBar();
+    }
+  };
+
+  const startVideoDownload = async () => {
+    if (!selectionMode) return;
+    if (selected.size === 0) {
+      showToast('请先勾选要下载的视频', 'info');
+      return;
+    }
+
+    try {
+      setBusy(true);
+      const videos = Array.from(selected.values());
+
+      showToast('正在生成视频下载任务...', 'info');
+      const { items, skipped } = await buildTasks(videos);
+
+      if (skipped.length > 0) {
+        showToast(`有 ${skipped.length} 个视频未能生成任务（可在控制台查看）`, 'info');
+        // eslint-disable-next-line no-console
+        console.warn('[up-subtitle-batch] skipped:', skipped);
+      }
+
+      if (items.length === 0) {
+        showToast('没有可执行的视频任务', 'error');
+        return;
+      }
+
+      openBatchProgressDialog({
+        title: `UP 投稿批量视频 - 共 ${items.length} 项`,
+        items: items.map((x) => ({ id: x.id, label: x.label, meta: x.meta as any })),
+        async runItem(item) {
+          const meta = item.meta as unknown as PartTaskMeta;
+
+          const baseTitle = sanitizeFilename(meta.title || meta.bvid);
+          const partTitle = sanitizeFilename(meta.part || '');
+          const filenamePrefix = partTitle
+            ? `${baseTitle}_P${meta.page}_${partTitle}`
+            : `${baseTitle}_P${meta.page}`;
+
+          const result = await downloadPartVideo({
+            cid: meta.cid,
+            bvid: meta.bvid,
+            filenamePrefix,
+          });
+
+          await new Promise((resolve) => setTimeout(resolve, 250));
+
+          if (result.downloadIds.length > 0) {
+            return { completion: result.completion };
+          }
+        },
+        autoStart: true,
+      });
+    } catch (err: any) {
+      showToast(`❌ ${err?.message || '批量下载视频失败'}`, 'error');
     } finally {
       setBusy(false);
       renderBar();

@@ -37,7 +37,7 @@ const MODULES: ModuleDef[] = [
   {
     id: 'up-subtitle-batch',
     name: 'UP投稿批量字幕',
-    description: '在UP空间投稿页进入批量选择模式，并批量下载所选视频字幕',
+    description: '在UP投稿页进入批量选择模式，批量下载所选视频的字幕/视频',
   },
 ];
 
