@@ -21,6 +21,12 @@ const MODULES = [
     icon: '🎬',
     description: '一键下载当前分P视频（可能分离音视频）',
   },
+  {
+    id: 'batch-video-download',
+    name: '批量下载视频',
+    icon: '🎞️',
+    description: '选择多个分P并批量下载视频（可能分离音视频）',
+  },
 ];
 
 /**

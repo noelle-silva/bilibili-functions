@@ -1,94 +1,15 @@
 import type { ButtonModule } from '@/core/types';
 import { getCurrentPartTitle, getVideoTitle } from '@/utils/api';
 import { showToast } from '@/utils/dom';
-import { debugLog, errorLog } from '@/utils/debug';
-
-type PlayUrlDurlItem = {
-  url: string;
-  backup_url?: string[];
-};
-
-type PlayUrlDashStream = {
-  baseUrl?: string;
-  base_url?: string;
-  bandwidth?: number;
-  id?: number;
-};
-
-type PlayUrlResponse = {
-  code: number;
-  message: string;
-  data?: {
-    durl?: PlayUrlDurlItem[];
-    dash?: {
-      video?: PlayUrlDashStream[];
-      audio?: PlayUrlDashStream[];
-    };
-  };
-};
-
-function sanitizeFilename(name: string) {
-  return (name || 'bilibili-video')
-    .trim()
-    .replace(/[\\/:*?"<>|]/g, '_')
-    .replace(/\s+/g, ' ')
-    .slice(0, 180);
-}
-
-function pickFirstUrl(item?: PlayUrlDurlItem) {
-  if (!item) return '';
-  return item.url || item.backup_url?.[0] || '';
-}
-
-function pickBestDashUrl(streams?: PlayUrlDashStream[]) {
-  if (!streams || streams.length === 0) return '';
-  const sorted = [...streams].sort((a, b) => (b.bandwidth || 0) - (a.bandwidth || 0));
-  const best = sorted[0];
-  return best.baseUrl || best.base_url || '';
-}
-
-async function fetchPlayUrl(
-  args: { bvid?: string; aid?: string; cid: string; qn: number; fnval: number }
-): Promise<PlayUrlResponse> {
-  const params = new URLSearchParams({
-    cid: args.cid,
-    qn: String(args.qn),
-    fnval: String(args.fnval),
-    fnver: '0',
-    fourk: '1',
-    platform: 'html5',
-    high_quality: '1',
-    otype: 'json',
-  });
-
-  if (args.bvid) params.set('bvid', args.bvid);
-  if (args.aid) params.set('aid', args.aid);
-
-  const url = `https://api.bilibili.com/x/player/playurl?${params.toString()}`;
-  debugLog('🎬 请求播放地址 (通过Background):', url);
-
-  const response: any = await chrome.runtime.sendMessage({
-    type: 'FETCH_PLAYURL_API',
-    data: { url, bvid: args.bvid },
-  });
-
-  if (!response?.success) {
-    throw new Error(response?.error || '获取播放地址失败');
-  }
-
-  return response.data as PlayUrlResponse;
-}
-
-async function downloadByUrl(url: string, filename: string) {
-  const response: any = await chrome.runtime.sendMessage({
-    type: 'DOWNLOAD_URL',
-    data: { url, filename },
-  });
-
-  if (!response?.success) {
-    throw new Error(response?.error || '发起下载失败');
-  }
-}
+import { errorLog } from '@/utils/debug';
+import {
+  fetchPlayUrlThroughBackground,
+  getDashUrls,
+  getProgressiveUrls,
+  inferExtension,
+  requestDownloadUrl,
+  sanitizeFilename,
+} from '@/utils/video-download';
 
 /**
  * 视频下载模块
@@ -128,7 +49,7 @@ export const videoDownloadModule: ButtonModule = {
       showToast('正在获取下载地址...', 'info');
 
       // 1) 尝试获取可直接下载的单文件链接（durl）
-      const progressive = await fetchPlayUrl({
+      const progressive = await fetchPlayUrlThroughBackground({
         cid: videoInfo.cid,
         bvid: videoInfo.bvid,
         aid: videoInfo.aid,
@@ -140,16 +61,24 @@ export const videoDownloadModule: ButtonModule = {
         throw new Error(progressive.message || '获取播放地址失败');
       }
 
-      const durl = progressive.data?.durl;
-      const directUrl = pickFirstUrl(durl?.[0]);
-      if (directUrl) {
-        await downloadByUrl(directUrl, `${namePrefix}.mp4`);
+      const progressiveUrls = getProgressiveUrls(progressive);
+      if (progressiveUrls.length > 0) {
+        if (progressiveUrls.length === 1) {
+          const ext = inferExtension(progressiveUrls[0], '.mp4');
+          await requestDownloadUrl(progressiveUrls[0], `${namePrefix}${ext}`);
+        } else {
+          for (let i = 0; i < progressiveUrls.length; i++) {
+            const url = progressiveUrls[i];
+            const ext = inferExtension(url, '.mp4');
+            await requestDownloadUrl(url, `${namePrefix}_seg${i + 1}${ext}`);
+          }
+        }
         showToast('✅ 已开始下载视频', 'success');
         return;
       }
 
       // 2) 退一步：DASH（通常分离音视频）
-      const dashResp = await fetchPlayUrl({
+      const dashResp = await fetchPlayUrlThroughBackground({
         cid: videoInfo.cid,
         bvid: videoInfo.bvid,
         aid: videoInfo.aid,
@@ -161,8 +90,7 @@ export const videoDownloadModule: ButtonModule = {
         throw new Error(dashResp.message || '获取播放地址失败');
       }
 
-      const videoUrl = pickBestDashUrl(dashResp.data?.dash?.video);
-      const audioUrl = pickBestDashUrl(dashResp.data?.dash?.audio);
+      const { videoUrl, audioUrl } = getDashUrls(dashResp);
 
       if (!videoUrl && !audioUrl) {
         throw new Error('未能找到可下载的视频/音频地址（可能需要登录或该视频受限）');
@@ -171,10 +99,10 @@ export const videoDownloadModule: ButtonModule = {
       showToast('⚠️ 仅拿到 DASH：将下载音视频两个文件', 'info');
 
       if (videoUrl) {
-        await downloadByUrl(videoUrl, `${namePrefix}_video.m4s`);
+        await requestDownloadUrl(videoUrl, `${namePrefix}_video.m4s`);
       }
       if (audioUrl) {
-        await downloadByUrl(audioUrl, `${namePrefix}_audio.m4s`);
+        await requestDownloadUrl(audioUrl, `${namePrefix}_audio.m4s`);
       }
 
       showToast('✅ 已开始下载（音/视频分开）', 'success');
@@ -186,4 +114,3 @@ export const videoDownloadModule: ButtonModule = {
 
   enabled: true,
 };
-
