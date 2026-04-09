@@ -35,6 +35,11 @@ const MODULES: ModuleDef[] = [
     name: '批量下载视频',
     description: '选择多个分P并批量下载视频（可能分离音视频）',
   },
+  {
+    id: 'up-subtitle-batch',
+    name: 'UP投稿批量字幕',
+    description: '在UP空间投稿页进入批量选择模式，并批量下载所选视频字幕',
+  },
 ];
 
 /**

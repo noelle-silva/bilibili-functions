@@ -34,6 +34,11 @@ const MODULES: ModuleDef[] = [
     name: '批量下载视频',
     description: '选择多个分P并批量下载视频（可能分离音视频）',
   },
+  {
+    id: 'up-subtitle-batch',
+    name: 'UP投稿批量字幕',
+    description: '在UP空间投稿页进入批量选择模式，并批量下载所选视频字幕',
+  },
 ];
 
 /**
@@ -163,14 +168,19 @@ async function checkCurrentPage() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     const headerDesc = document.getElementById('headerDesc');
 
-    if (tab?.url?.includes('bilibili.com/video/')) {
+    const isVideo = !!tab?.url?.includes('bilibili.com/video/');
+    const isSpaceVideo = !!tab?.url?.includes('space.bilibili.com/') && !!tab?.url?.includes('/video');
+
+    if (isVideo || isSpaceVideo) {
       if (headerDesc) {
-        headerDesc.textContent = '当前在 Bilibili 视频页面 ✓';
+        headerDesc.textContent = isVideo
+          ? '当前在 Bilibili 视频页面 ✓'
+          : '当前在 UP 空间投稿页 ✓';
       }
       showStatusMessage('当前页面已启用自定义按钮', 'success');
     } else {
       if (headerDesc) {
-        headerDesc.textContent = '请在 Bilibili 视频页面使用';
+        headerDesc.textContent = '请在 Bilibili 视频页 / UP投稿页使用';
       }
     }
   } catch (error) {

@@ -82,6 +82,24 @@ export function isVideoPage(): boolean {
 }
 
 /**
+ * 检查是否为 UP 空间投稿视频列表页（space/video）
+ */
+export function isSpaceVideoPage(): boolean {
+  try {
+    if (window.location.hostname !== 'space.bilibili.com') return false;
+    // 典型：
+    // - /123456/upload/video （稿件管理 - 视频）
+    // - /123456/video        （空间 - 视频列表）
+    const p = window.location.pathname.replace(/\/+$/, '');
+    if (/^\/\d+\/upload\/video\b/.test(p)) return true;
+    if (/^\/\d+\/video\b/.test(p)) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 监听页面URL变化（SPA路由）
  */
 export function observeUrlChange(callback: () => void): () => void {

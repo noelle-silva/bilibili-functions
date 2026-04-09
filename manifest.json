@@ -15,6 +15,7 @@
   ],
   "host_permissions": [
     "https://www.bilibili.com/*",
+    "https://space.bilibili.com/*",
     "https://api.bilibili.com/*",
     "https://*.hdslb.com/*"
   ],
@@ -22,6 +23,11 @@
     {
       "matches": ["https://www.bilibili.com/video/*"],
       "js": ["src/content/index.ts"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://space.bilibili.com/*"],
+      "js": ["src/content/space.ts"],
       "run_at": "document_idle"
     }
   ],
