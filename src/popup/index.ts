@@ -195,6 +195,31 @@ function initEventListeners() {
   // 打开设置页面
   const openSettingsBtn = document.getElementById('openSettingsBtn');
   openSettingsBtn?.addEventListener('click', openSettingsPage);
+
+  // 下载管理：从 popup 触发“页面悬浮窗”打开
+  const openDownloadManagerBtn = document.getElementById(
+    'toggleDownloadManagerBtn'
+  ) as HTMLButtonElement | null;
+
+  openDownloadManagerBtn?.addEventListener('click', async () => {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab?.id) {
+        showStatusMessage('未找到当前标签页', 'warning');
+        return;
+      }
+      if (!tab.url?.includes('bilibili.com/video/')) {
+        showStatusMessage('请在 Bilibili 视频页面使用', 'warning');
+        return;
+      }
+
+      await chrome.tabs.sendMessage(tab.id, { type: 'OPEN_DOWNLOAD_MANAGER' });
+      showStatusMessage('已打开下载任务面板', 'success');
+    } catch (error) {
+      console.error('打开下载任务面板失败:', error);
+      showStatusMessage('打开失败：请刷新视频页后重试', 'warning');
+    }
+  });
 }
 
 // 页面加载时初始化

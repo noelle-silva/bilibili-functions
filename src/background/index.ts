@@ -5,26 +5,121 @@ debugLog('🔧 Bilibili Buttons - Background Service Worker 已启动');
 
 const downloadIdToTabId = new Map<number, number>();
 
+type DownloadTaskKind = 'subtitle' | 'video' | 'unknown';
+type DownloadTaskState = 'in_progress' | 'complete' | 'interrupted';
+type DownloadTask = {
+  downloadId: number;
+  kind: DownloadTaskKind;
+  filename: string;
+  url?: string;
+  state: DownloadTaskState;
+  error?: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+const downloadTasks = new Map<number, DownloadTask>();
+const DOWNLOAD_TASKS_KEY = 'download_tasks_v1';
+let saveTimer: number | null = null;
+
+function getSessionStorageArea(): chrome.storage.StorageArea {
+  const session = (chrome.storage as any).session as chrome.storage.StorageArea | undefined;
+  return session || chrome.storage.local;
+}
+
+async function loadDownloadTasks() {
+  try {
+    const area = getSessionStorageArea();
+    const result = await area.get(DOWNLOAD_TASKS_KEY);
+    const raw = result[DOWNLOAD_TASKS_KEY] as DownloadTask[] | undefined;
+    if (!raw || !Array.isArray(raw)) return;
+
+    downloadTasks.clear();
+    raw.forEach((t) => {
+      if (!t || typeof t.downloadId !== 'number') return;
+      downloadTasks.set(t.downloadId, t);
+    });
+  } catch (err) {
+    errorLog('加载下载任务失败:', err);
+  }
+}
+
+async function saveDownloadTasks() {
+  try {
+    const area = getSessionStorageArea();
+    const list = Array.from(downloadTasks.values())
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, 200);
+    await area.set({ [DOWNLOAD_TASKS_KEY]: list });
+  } catch (err) {
+    errorLog('保存下载任务失败:', err);
+  }
+}
+
+function scheduleSaveDownloadTasks() {
+  if (saveTimer) return;
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    void saveDownloadTasks();
+  }, 500) as any;
+}
+
+function trackDownloadCreated(args: {
+  downloadId: number;
+  kind: DownloadTaskKind;
+  filename: string;
+  url?: string;
+}) {
+  const now = Date.now();
+  downloadTasks.set(args.downloadId, {
+    downloadId: args.downloadId,
+    kind: args.kind,
+    filename: args.filename,
+    url: args.url,
+    state: 'in_progress',
+    createdAt: now,
+    updatedAt: now,
+  });
+  scheduleSaveDownloadTasks();
+}
+
+function trackDownloadChanged(args: { downloadId: number; state?: string; error?: string }) {
+  const t = downloadTasks.get(args.downloadId);
+  if (!t) return;
+
+  if (args.state === 'complete' || args.state === 'interrupted') {
+    t.state = args.state;
+  }
+  if (args.error) t.error = args.error;
+  t.updatedAt = Date.now();
+  scheduleSaveDownloadTasks();
+}
+
+void loadDownloadTasks();
+
 chrome.downloads.onChanged.addListener((delta) => {
   try {
     const tabId = downloadIdToTabId.get(delta.id);
-    if (!tabId) return;
 
     const state = delta.state?.current;
     const error = delta.error?.current;
 
-    // 把下载状态推送给对应 tab 的 content script
-    chrome.tabs.sendMessage(tabId, {
-      type: 'DOWNLOAD_CHANGED',
-      data: {
-        downloadId: delta.id,
-        state,
-        error,
-      },
-    });
+    // 把下载状态推送给对应 tab 的 content script（如果有的话）
+    if (tabId) {
+      chrome.tabs.sendMessage(tabId, {
+        type: 'DOWNLOAD_CHANGED',
+        data: {
+          downloadId: delta.id,
+          state,
+          error,
+        },
+      });
+    }
+
+    trackDownloadChanged({ downloadId: delta.id, state, error });
 
     if (state === 'complete' || state === 'interrupted') {
-      downloadIdToTabId.delete(delta.id);
+      if (tabId) downloadIdToTabId.delete(delta.id);
     }
   } catch (err) {
     errorLog('下载状态推送失败:', err);
@@ -85,6 +180,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .then((downloadId) => sendResponse({ success: true, data: { downloadId } }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
     return true; // 异步响应
+  }
+
+  // 下载管理：列出当前任务
+  if (request.type === 'LIST_DOWNLOAD_TASKS') {
+    const tasks = Array.from(downloadTasks.values()).sort((a, b) => b.updatedAt - a.updatedAt);
+    sendResponse({ success: true, data: { tasks } });
+    return;
+  }
+
+  // 打开系统下载页面
+  if (request.type === 'OPEN_CHROME_DOWNLOADS') {
+    chrome.tabs.create({ url: 'chrome://downloads/' });
+    sendResponse({ success: true });
+    return;
   }
 });
 
@@ -211,6 +320,13 @@ async function handleDownload(data: { filename: string; content: string }, tabId
       conflictAction: 'uniquify',
     });
 
+    trackDownloadCreated({
+      downloadId,
+      kind: 'subtitle',
+      filename: data.filename,
+      url: undefined,
+    });
+
     if (typeof tabId === 'number') {
       downloadIdToTabId.set(downloadId, tabId);
     }
@@ -232,6 +348,13 @@ async function handleUrlDownload(data: { url: string; filename: string }, tabId?
       filename: data.filename,
       saveAs: false,
       conflictAction: 'uniquify',
+    });
+
+    trackDownloadCreated({
+      downloadId,
+      kind: 'video',
+      filename: data.filename,
+      url: data.url,
     });
 
     if (typeof tabId === 'number') {

@@ -7,6 +7,7 @@ import { subtitleCopyModule } from '@/modules/subtitle-copy';
 import { batchDownloadModule } from '@/modules/batch-download';
 import { videoDownloadModule } from '@/modules/video-download';
 import { batchVideoDownloadModule } from '@/modules/batch-video-download';
+import { setupDownloadManagerListener } from '@/content/download-manager';
 
 console.log('🚀 Bilibili 自定义按钮扩展已加载');
 
@@ -56,6 +57,9 @@ async function reinit() {
 
 // 首次加载
 init();
+
+// 安装“下载任务面板”消息入口（来自 popup）
+setupDownloadManagerListener();
 
 // 监听 SPA 路由变化
 domInjector.observePageChanges(() => {
