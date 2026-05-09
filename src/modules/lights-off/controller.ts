@@ -30,7 +30,7 @@ export class LightsOffController {
   private syncTimer: number | null = null;
   private enabled = false;
   private active = false;
-  private visible = false;
+  private hoverVisible = false;
   private settingsOpen = false;
   private pointer: PointerPosition | null = null;
   private opacity: number = OPACITY_LIMITS.default;
@@ -117,7 +117,7 @@ export class LightsOffController {
     } else {
       this.setActive(false);
       this.setSettingsOpen(false);
-      this.setVisible(false);
+      this.setHoverVisible(false);
     }
   }
 
@@ -131,7 +131,7 @@ export class LightsOffController {
     const rect = getCleanVideoRect(this.video);
     if (!rect) {
       this.videoRect = null;
-      this.setVisible(false);
+      this.setHoverVisible(false);
       this.syncLayerState();
       return;
     }
@@ -191,15 +191,14 @@ export class LightsOffController {
     this.syncLayerState();
   }
 
-  private setVisible(visible: boolean): void {
-    this.visible = visible;
-    if (!visible) this.settingsOpen = false;
+  private setHoverVisible(visible: boolean): void {
+    this.hoverVisible = visible;
     this.syncLayerState();
   }
 
   private syncPointerVisibility(): void {
     if (!this.pointer || !this.videoRect) {
-      this.setVisible(false);
+      this.setHoverVisible(false);
       return;
     }
 
@@ -207,16 +206,19 @@ export class LightsOffController {
       this.containsRectPoint(this.videoRect, this.pointer) ||
       this.containsElementPoint(this.controls, this.pointer) ||
       this.containsElementPoint(this.settingsPanel, this.pointer);
-    this.setVisible(visible);
+    this.setHoverVisible(visible);
   }
 
   private syncLayerState(): void {
     if (!this.layer) return;
 
+    const ready = Boolean(this.videoRect);
+    const uiVisible = ready && (this.hoverVisible || this.settingsOpen);
+
     this.layer.dataset.active = String(this.active);
-    this.layer.dataset.ready = String(Boolean(this.videoRect));
-    this.layer.dataset.visible = String(this.visible && Boolean(this.videoRect));
-    this.layer.dataset.settingsOpen = String(this.settingsOpen && this.visible);
+    this.layer.dataset.ready = String(ready);
+    this.layer.dataset.visible = String(uiVisible);
+    this.layer.dataset.settingsOpen = String(this.settingsOpen && ready);
     this.layer.style.setProperty('--bilibili-lights-off-opacity', String(this.opacity / 100));
 
     const value = this.layer.querySelector<HTMLElement>('.bilibili-lights-off-value');
@@ -240,7 +242,7 @@ export class LightsOffController {
     }
 
     if (this.settingsButton) {
-      this.settingsButton.setAttribute('aria-expanded', String(this.settingsOpen && this.visible));
+      this.settingsButton.setAttribute('aria-expanded', String(this.settingsOpen));
       this.settingsButton.setAttribute(
         'aria-label',
         this.settingsOpen ? '关闭遮罩透明度设置' : '打开遮罩透明度设置'
@@ -289,7 +291,7 @@ export class LightsOffController {
 
   private handlePointerLeave = (): void => {
     this.pointer = null;
-    this.setVisible(false);
+    this.setHoverVisible(false);
   };
 
   private handleVideoMetadataChange = (): void => {

@@ -22,7 +22,7 @@ export const PLAYER_CONTROL = {
 export const OPACITY_LIMITS = {
   default: 72,
   min: 20,
-  max: 92,
+  max: 100,
 } as const;
 
 export const VIDEO_ELEMENT_SELECTORS = [
