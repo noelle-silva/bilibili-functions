@@ -23,7 +23,7 @@ export function getCleanVideoRect(video: HTMLVideoElement): ViewportRect | null 
   if (!isUsableRect(rect)) return null;
 
   const intrinsicRatio = getIntrinsicRatio(video);
-  if (!intrinsicRatio) return toViewportRect(rect);
+  if (!intrinsicRatio) return null;
 
   const boxRatio = rect.width / rect.height;
   if (boxRatio > intrinsicRatio) {
@@ -35,10 +35,6 @@ export function getCleanVideoRect(video: HTMLVideoElement): ViewportRect | null 
   const height = rect.width / intrinsicRatio;
   const top = rect.top + (rect.height - height) / 2;
   return createRect(rect.left, top, rect.width, height);
-}
-
-export function containsPoint(rect: ViewportRect, x: number, y: number): boolean {
-  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 }
 
 function collectVideoCandidates(): HTMLVideoElement[] {
@@ -69,10 +65,6 @@ function isUsableRect(rect: DOMRect): boolean {
 function getElementArea(element: HTMLElement): number {
   const rect = element.getBoundingClientRect();
   return rect.width * rect.height;
-}
-
-function toViewportRect(rect: DOMRect): ViewportRect {
-  return createRect(rect.left, rect.top, rect.width, rect.height);
 }
 
 function createRect(left: number, top: number, width: number, height: number): ViewportRect {
