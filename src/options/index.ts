@@ -1,46 +1,8 @@
 import { getModuleConfig, updateModuleConfig, saveModuleConfig } from '@/utils/storage';
 import type { ModuleConfig } from '@/core/types';
+import { MODULE_DEFINITIONS } from '@/core/module-catalog';
 
-type ModuleDef = {
-  id: string;
-  name: string;
-  description: string;
-  icon?: string;
-};
-
-// 模块定义（与实际模块保持一致）
-const MODULES: ModuleDef[] = [
-  {
-    id: 'subtitle-copy',
-    name: '复制字幕',
-    description: '一键复制当前视频的字幕到剪贴板',
-  },
-  {
-    id: 'batch-download',
-    name: '批量下载字幕',
-    description: '选择多个分P并批量下载字幕TXT文件',
-  },
-  {
-    id: 'comment-download',
-    name: '下载评论',
-    description: '导出当前视频评论为 TXT（含楼中楼，过大自动拆分）',
-  },
-  {
-    id: 'video-download',
-    name: '下载视频',
-    description: '一键下载当前分P视频（可能分离音视频）',
-  },
-  {
-    id: 'batch-video-download',
-    name: '批量下载视频',
-    description: '选择多个分P并批量下载视频（可能分离音视频）',
-  },
-  {
-    id: 'up-subtitle-batch',
-    name: 'UP投稿批量字幕',
-    description: '在UP投稿页进入批量选择模式，批量下载所选视频的字幕/视频',
-  },
-];
+const MODULES = MODULE_DEFINITIONS;
 
 /**
  * 更新统计信息

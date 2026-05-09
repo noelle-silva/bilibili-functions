@@ -8,6 +8,7 @@ import { batchDownloadModule } from '@/modules/batch-download';
 import { commentDownloadModule } from '@/modules/comment-download';
 import { videoDownloadModule } from '@/modules/video-download';
 import { batchVideoDownloadModule } from '@/modules/batch-video-download';
+import { lightsOffModule, syncLightsOffModule } from '@/modules/lights-off';
 import { setupDownloadManagerListener } from '@/content/download-manager';
 
 console.log('🚀 Bilibili 自定义按钮扩展已加载');
@@ -30,6 +31,7 @@ async function init() {
     buttonManager.register(commentDownloadModule);
     buttonManager.register(videoDownloadModule);
     buttonManager.register(batchVideoDownloadModule);
+    buttonManager.register(lightsOffModule);
 
     // 注入按钮
     const container = await domInjector.inject();
@@ -39,6 +41,8 @@ async function init() {
     } else {
       console.warn('⚠️  未能找到合适的注入位置');
     }
+
+    await syncLightsOffModule();
   } catch (error) {
     console.error('❌ 初始化失败:', error);
   }
@@ -50,11 +54,15 @@ async function init() {
 async function reinit() {
   console.log('🔄 页面变化，重新初始化');
 
-  // 清理旧的容器
-  domInjector.remove();
+  cleanupVideoPage();
 
   // 重新初始化
   await init();
+}
+
+function cleanupVideoPage() {
+  buttonManager.destroy();
+  domInjector.remove();
 }
 
 // 首次加载
@@ -68,6 +76,6 @@ domInjector.observePageChanges(() => {
   if (isVideoPage()) {
     reinit();
   } else {
-    domInjector.remove();
+    cleanupVideoPage();
   }
 });

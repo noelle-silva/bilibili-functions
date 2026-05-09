@@ -1,7 +1,16 @@
-import type { ButtonModule } from '@/core/types';
+import type { ButtonModule, ToolbarButtonConfig } from '@/core/types';
 import { isModuleEnabled } from '@/utils/storage';
 import { getCompleteVideoInfo } from '@/utils/api';
 import { debugLog, errorLog } from '@/utils/debug';
+
+type ToolbarButtonModule = ButtonModule & {
+  button: ToolbarButtonConfig;
+  execute: NonNullable<ButtonModule['execute']>;
+};
+
+function hasToolbarButton(module: ButtonModule): module is ToolbarButtonModule {
+  return Boolean(module.button && module.execute);
+}
 
 /**
  * 按钮管理器
@@ -62,10 +71,10 @@ export class ButtonManager {
     buttons.forEach((button) => button.remove());
 
     // 获取所有启用的模块
-    const enabledModules: ButtonModule[] = [];
+    const enabledModules: ToolbarButtonModule[] = [];
     for (const module of this.modules.values()) {
       const enabled = await isModuleEnabled(module.id);
-      if (enabled) {
+      if (enabled && hasToolbarButton(module)) {
         enabledModules.push(module);
       }
     }
@@ -83,7 +92,7 @@ export class ButtonManager {
   /**
    * 创建按钮元素（B站原生风格）
    */
-  private createButton(module: ButtonModule): HTMLElement {
+  private createButton(module: ToolbarButtonModule): HTMLElement {
     const button = document.createElement('button');
     button.className = `bilibili-custom-button ${module.button.className || ''}`;
     button.setAttribute('data-module-id', module.id);

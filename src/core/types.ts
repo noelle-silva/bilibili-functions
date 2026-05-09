@@ -33,7 +33,15 @@ export interface SubtitleInfo {
   ai_type?: number;
 }
 
-// 按钮模块接口
+// 工具栏按钮配置
+export interface ToolbarButtonConfig {
+  text: string;
+  icon?: string;
+  className?: string;
+  position?: number;
+}
+
+// 功能模块接口
 export interface ButtonModule {
   // 模块唯一标识
   id: string;
@@ -44,16 +52,11 @@ export interface ButtonModule {
   // 模块描述
   description?: string;
 
-  // 按钮配置
-  button: {
-    text: string;
-    icon?: string;
-    className?: string;
-    position?: number;
-  };
+  // 工具栏按钮配置；生命周期型模块可不提供按钮
+  button?: ToolbarButtonConfig;
 
   // 执行函数（点击按钮时调用）
-  execute: (context: ExecutionContext) => Promise<void>;
+  execute?: (context: ExecutionContext) => Promise<void>;
 
   // 生命周期钩子
   onLoad?: () => void;

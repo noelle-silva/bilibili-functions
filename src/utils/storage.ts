@@ -38,6 +38,35 @@ export async function updateModuleConfig(
 }
 
 /**
+ * 获取单个模块设置
+ */
+export async function getModuleSettings<T extends Record<string, any>>(
+  moduleId: string
+): Promise<Partial<T>> {
+  const config = await getModuleConfig();
+  return (config[moduleId]?.settings || {}) as Partial<T>;
+}
+
+/**
+ * 合并更新单个模块设置，并保留启用状态
+ */
+export async function updateModuleSettings(
+  moduleId: string,
+  settings: Record<string, any>
+): Promise<void> {
+  const config = await getModuleConfig();
+  const current = config[moduleId];
+  config[moduleId] = {
+    enabled: current?.enabled ?? true,
+    settings: {
+      ...(current?.settings || {}),
+      ...settings,
+    },
+  };
+  await saveModuleConfig(config);
+}
+
+/**
  * 获取单个模块的启用状态
  */
 export async function isModuleEnabled(moduleId: string): Promise<boolean> {
