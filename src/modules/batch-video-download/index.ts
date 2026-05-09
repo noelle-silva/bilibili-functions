@@ -20,6 +20,7 @@ export const batchVideoDownloadModule: ButtonModule = {
 
   button: {
     text: '批量下载视频',
+    icon: 'video-batch-download',
     position: 400,
   },
 

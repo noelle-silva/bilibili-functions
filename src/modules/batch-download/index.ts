@@ -18,6 +18,7 @@ export const batchDownloadModule: ButtonModule = {
 
   button: {
     text: '批量下载',
+    icon: 'subtitle-batch-download',
     position: 200,
   },
 

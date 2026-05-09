@@ -14,6 +14,7 @@ export const subtitleCopyModule: ButtonModule = {
 
   button: {
     text: '复制字幕',
+    icon: 'subtitle-copy',
     position: 100,
   },
 

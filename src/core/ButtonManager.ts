@@ -1,4 +1,5 @@
 import type { ButtonModule, ToolbarButtonConfig } from '@/core/types';
+import { createToolbarIcon } from '@/core/toolbar-icons';
 import { isModuleEnabled } from '@/utils/storage';
 import { getCompleteVideoInfo } from '@/utils/api';
 import { debugLog, errorLog } from '@/utils/debug';
@@ -94,14 +95,13 @@ export class ButtonManager {
    */
   private createButton(module: ToolbarButtonModule): HTMLElement {
     const button = document.createElement('button');
+    button.type = 'button';
     button.className = `bilibili-custom-button ${module.button.className || ''}`;
     button.setAttribute('data-module-id', module.id);
-    button.setAttribute('title', module.description || module.name);
+    button.setAttribute('data-label', module.button.text);
+    button.setAttribute('aria-label', module.button.text);
 
-    // 按钮内容
-    const content = document.createElement('span');
-    content.textContent = module.button.text;
-    button.appendChild(content);
+    button.appendChild(createToolbarIcon(module.button.icon));
 
     // 点击事件
     button.addEventListener('click', async () => {
@@ -148,20 +148,54 @@ export class ButtonManager {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        height: 32px;
-        padding: 0 14px;
+        position: relative;
+        width: 36px;
+        height: 36px;
+        padding: 0;
         background: rgba(255, 255, 255, 0.92);
         border: 1px solid rgba(229, 233, 239, 0.95);
-        border-radius: 999px;
+        border-radius: 50%;
         color: #18191c;
-        font-size: 13px;
-        font-weight: 600;
         line-height: 1;
         cursor: pointer;
-        white-space: nowrap;
         transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease, color 0.12s ease, background 0.12s ease, opacity 0.12s ease;
         box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
         backdrop-filter: saturate(160%) blur(10px);
+      }
+
+      .bilibili-custom-button-icon {
+        width: 20px;
+        height: 20px;
+        flex: 0 0 auto;
+        pointer-events: none;
+      }
+
+      .bilibili-custom-button::after {
+        content: attr(data-label);
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 50%;
+        z-index: 100000;
+        min-width: max-content;
+        padding: 6px 9px;
+        border-radius: 999px;
+        background: rgba(24, 25, 28, 0.92);
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transform: translate(-50%, -4px);
+        transition: opacity 0.12s ease, transform 0.12s ease;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+      }
+
+      .bilibili-custom-button:hover:not(:disabled)::after,
+      .bilibili-custom-button:focus-visible::after {
+        opacity: 1;
+        transform: translate(-50%, 0);
       }
 
       .bilibili-custom-button:hover:not(:disabled) {

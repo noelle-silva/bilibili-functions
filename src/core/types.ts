@@ -34,9 +34,16 @@ export interface SubtitleInfo {
 }
 
 // 工具栏按钮配置
+export type ToolbarButtonIconName =
+  | 'subtitle-copy'
+  | 'subtitle-batch-download'
+  | 'comment-download'
+  | 'video-download'
+  | 'video-batch-download';
+
 export interface ToolbarButtonConfig {
   text: string;
-  icon?: string;
+  icon: ToolbarButtonIconName;
   className?: string;
   position?: number;
 }

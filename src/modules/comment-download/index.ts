@@ -13,6 +13,7 @@ export const commentDownloadModule: ButtonModule = {
 
   button: {
     text: '下载评论',
+    icon: 'comment-download',
     position: 250,
   },
 
@@ -58,4 +59,3 @@ export const commentDownloadModule: ButtonModule = {
 
   enabled: true,
 };
-
